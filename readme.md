@@ -8,6 +8,8 @@ I want to make one.
 
 So I'm using web technologies to keep it interactive but also familiar.
 
+[Try out the master branch here](https://sqyphen.github.io/scifi-web-interface/)
+
 
 ## Setup
 
