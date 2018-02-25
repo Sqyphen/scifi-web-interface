@@ -11,7 +11,6 @@
     var leftCodeContents;
     var typeAreaPos = 0;
     var typingContainerActive = false;
-    var lastKeycodePressed = 0;
 
     //Initilise
     function init(){
@@ -103,7 +102,7 @@
 
     //Code Scroll
     function startCodeScroll(){
-        var getCode = getFile('./assets/data/code.txt', putFile);
+        getFile('./assets/data/code.txt', putFile);
     }
 
     function putFile(contents){
@@ -153,7 +152,7 @@
     }
 
     function toggleBoolean(bool){
-        if(bool == true){
+        if(bool === true){
             return false;
         } else {
             return true;
