@@ -1,0 +1,445 @@
+namespace App\Http\Controllers;
+
+use \Illuminate\Http\Response;
+use \Illuminate\Http\Request;
+
+use File;
+use Session;
+use Hash;
+use Lang;
+use Auth;
+use Exception;
+
+use App\Facebook;
+use App\Error;
+use App\Post;
+use App\User;
+use App\Comment;
+use App\Like;
+use App\Favourite;
+
+class HomeController extends Controller
+{
+/**
+* Create a new controller instance.
+*
+* @return void
+*/
+public function __construct()
+{
+parent::__construct();
+header('Access-Control-Allow-Origin: *');
+}
+
+/**
+* Verifys user POST data for login
+*
+* @return redirect
+*/
+public function getUser(Request $request)
+{
+$user = Auth::user();
+if ($user) {
+$safe = array('name' => $user->name, 'email' => $user->email, 'loggedIn' => true);
+} else {
+$safe = array('loggedIn' => false);
+}
+return response()->json(array('user' => $safe), 200);
+}
+
+/**
+* 
+* @return 
+*/
+public function index()
+{
+return view('home');
+}
+
+
+/**
+* 
+* @return 
+*/
+public function share($id)
+{
+$post = Post::find($id);   
+return view('share', ['post' => $post]);
+}
+
+/**
+* Retrieves all items from Post model
+* @return json
+*/
+public function gallery()
+{
+$data = [];
+$items = Post::where('approved', 1)->latest()->get()->toArray();
+
+foreach ($items as $item) {
+if (!$item['approved'] && 'live' === env('APP_ENV')) {
+    break;
+}
+
+$item['name'] = $this->decryptItemDetails( $item['name'] );
+$item['api_id'] = $this->decryptItemDetails( $item['api_id'] );
+$item['profilePictureURL'] = $this->decryptItemDetails( $item['profilePictureURL'] );
+
+$comments = Comment::where(['post_id' => $item['id'], 'approved' => 1])->get()->toArray();
+$newComments = array();
+
+foreach ($comments as $c) {
+    $c['author'] = $this->decryptItemDetails( $c['author'] );
+    $c['avatar'] = $this->decryptItemDetails( $c['avatar'] );
+    $newComments[] = $c;
+}
+
+$likes = Like::where(['post_id' => $item['id']])->get()->toArray();
+
+$newItem = Post::match($item);
+$newItem['comments'] = $newComments;
+$newItem['likes'] = $likes;
+$newItem['likedByUser'] = false;
+$newItem['favouritedByUser'] = false;
+
+if ($user = Auth::user()) {
+    $newItem['likedByUser'] = !!Like::where(['user_id' => $user->id, 'post_id' => $item['id']])->first();
+    $newItem['favouritedByUser'] = !!Favourite::where(['user_id' => $user->id, 'post_id' => $item['id']])->first();
+}
+
+$data[] = $newItem;
+
+}
+
+$response = [
+'success' => true,
+'data'    => $data,
+];
+
+return response()->json($response, 200);
+}
+
+public function decryptItemDetails( $value )
+{
+if ( !is_null( $value ) )
+{
+$value = \Crypt::decrypt( $value );
+}
+
+return $value;
+}
+
+/** 
+* Shows the requested resource
+* @param  string $platform
+* @param  string $id
+* @return json
+*/
+public function view(Request $request, $platform)
+{
+$response = [];
+$id = $request->get('photoId');
+$token = $request->get('token');
+
+if (!$token && !$id) {
+return response('token or photoId param is missing!', 406);
+}
+
+$data = Facebook::getImageDetails($token, $id);
+
+if ($data) {
+$response['success'] = true;
+$response['token'] = $token;
+$response['data'] = $data;
+
+return response()->json($response, 200);
+}
+
+return response('Cannot process data.', 422);
+}
+
+public function registerUser(Request $request)
+{
+$reponse;
+
+$data = array(
+'name' => $request->input('name', false), 
+'email' => $request->input('email', false),
+'password' => $request->input('password', false)
+);
+
+$errors = $this->validateUserData( $data );   
+
+if( empty($errors) )
+{
+$data['password'] = Hash::make($data['password']);
+$data['registration_key'] = Hash::make(uniqid('tcw_'));
+
+$item = User::create( $data );
+
+if ($item) {
+    $response['success'] = true;
+    return response()->json($response, 200);
+}
+
+}
+
+$response['success'] = false;
+$response['errors'] = $errors;
+return response()->json($response, 200);
+}
+
+
+private function validateUserData($data)
+{
+$errors = [];
+
+foreach ($data as $key => $value)
+{
+if( $value == false || empty($value) ) {
+    $errors[$key] = Lang::get('user.' . $key . '_required_error');
+}
+
+if($key == 'email')
+{
+    if (!filter_var($value, FILTER_VALIDATE_EMAIL))
+    {
+        $errors[$key] = Lang::get('user.email_required_error');
+    }
+
+    if( User::emailRegistered( $value ) )
+    {
+        $errors[$key] = Lang::get('user.email_already_registered');
+    }   
+}
+}
+
+return $errors;
+}
+
+public function logoutUser(){
+Auth::logout();
+return redirect('/#start');
+}
+
+/**
+* Creates a new item based on details from API.
+* @param  [string] $platform
+* @param  [string] $id
+* @return response
+*/
+public function upload(Request $request)
+{
+$response = [];
+$filename = false;
+$name = $request->get('name');
+$lat = $request->get('lat');
+$lng = $request->get('lng');
+$privacy = $request->get('privacy');
+$terms = $request->get('terms');
+$city = $request->get('city');
+$country = $request->get('country');
+
+if (!$name || !$lat || !$lng || !$country || !$privacy || !$terms) {
+return response('Missing a parameter in the request.', 422);
+}
+
+if ($request->hasFile('imageURL')) {
+
+if (!$request->file('imageURL')->isValid()) {
+    return response('Uploaded file is not valid.', 422);
+}
+
+if (!File::exists('uploads')) {
+    File::makeDirectory('uploads');
+}
+
+$image = $request->file('imageURL');
+$mimetype = str_replace('image/', '', $image->getMimetype());
+if (!in_array($mimetype, ['jpg', 'jpeg', 'png'])) {
+    return response()->json('Only allowed to uploaded jpg, jpeg or png files.', 422);
+}
+$imageName = str_random(12) . '.' . $mimetype;
+
+$image->move('uploads', $imageName);
+$filename = url('/uploads/' . $imageName);
+
+$sourceSocialMedia = false;
+} else {
+
+$imageURL = $request->get('imageURL');
+$sourceSocialMedia = true;
+// Try and download the image from social platform.
+try {
+    $imageName = str_random(12) . '.jpg'; // all posts from social platforms seem to be jpg
+    copy($imageURL, public_path('uploads/' . $imageName));
+    $filename = env('BASE_URL') . '/uploads/' . $imageName;
+} catch (Exception $e) { // Use existing URL if it fails.
+    $filename = $request->get('imageURL');
+}
+}
+
+if ($filename) {
+
+$postData = array(
+    'imageURL' => $filename,
+    'name'     => $request->get('name'),
+    'caption'  => $request->get('caption'),
+    'lat'      => $request->get('lat'),
+    'lng'      => $request->get('lng'),
+    'city'     => $request->get('city'),
+    'country'  => $request->get('country'),
+    'privacy'  => filter_var($request->get('privacy'), FILTER_VALIDATE_BOOLEAN),
+    'terms'    => filter_var($request->get('terms'), FILTER_VALIDATE_BOOLEAN),
+    'social_src' => $sourceSocialMedia,
+    'mediumImageURL' => null,
+    'approved' => 1
+);
+
+if( $request->get('profilePictureURL') != null ) {
+    $postData['profilePictureURL'] = $request->get('profilePictureURL');
+}
+
+// Keep reference to original image if source is social platform.
+if ($request->get('imageURL') != null) {
+    $postData['socialImageURL'] = $request->get('imageURL');
+}
+
+$user = Auth::user();
+if ($user) {
+    $postData['user_id'] = $user->id;
+}
+
+$item = Post::create( $postData );
+
+if ($item) {
+    $response['success'] = true;
+    $response['data'] = Post::match($item);
+
+    return response()->json($response, 200);
+}
+}
+
+return response('Cannot process data', 422);
+}
+
+public function createComment(Request $request, $postId) {
+
+if ($request->has('copy') && $request->has('author') && $request->has('avatar')) {
+
+$copy = $request->input('copy');
+$author = $request->input('author');
+$avatar = $request->input('avatar');
+
+if (strlen($copy) <= 140) {
+
+    Comment::create(array(
+
+        'copy' => $copy, 
+        'author' => $author,
+        'avatar' => $avatar,
+        'post_id' => $postId
+
+    ));
+
+} else {
+
+    return response('Cannot process data. Comment is too long.', 422);
+
+}
+
+
+} else {
+
+$problems = '';
+
+if (!$request->has('copy')) {
+
+    $problems .= ' copy';
+
+}
+
+if (!$request->has('author')) {
+
+    $problems .= ' author';
+
+}
+
+if (!$request->has('avatar')) {
+
+    $problems .= ' avatar';
+
+}
+
+return response('Cannot process data. Problem fields: ' . $problems, 422);
+
+}
+
+}
+
+
+/**
+* Redirection handler for Instagram API logins
+* 
+* @return 
+*/
+public function instagramredirect()
+{
+$status = 'error';
+$redirect_url = "/#upload/1";
+
+if(isset($_GET['code'])){
+
+try
+{
+    $certPath = dirname(__DIR__) . '/../../../certs/cacert.pem';
+
+    $data = array( 'client_id' =>  env('INSTAGRAM_CLIENT_ID'),
+                    'client_secret' =>  env('INSTAGRAM_CLIENT_SECRET'),
+                    'grant_type' => 'authorization_code',
+                    'redirect_uri' => env('INSTAGRAM_CALLBACK_URL'),
+                    'code' => $_GET['code']
+                    );
+
+    $data_str = $this->prepareCurlFields($data);
+
+    //open connection
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.instagram.com/oauth/access_token');
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data_str);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $result = curl_exec($ch);
+
+    $result_json = json_decode($result);
+
+    if(isset($result_json->access_token)){
+        $status = 'ok';
+        $redirect_url = "/#upload/1?redirect=instagram-login";
+
+        Session::set('ig-user-session', $result);
+    }
+
+}
+catch(Exception $e) {
+}
+
+}
+
+return view('instagramredirect', [ 'status' => $status, 'url' => $redirect_url ]);
+}
+
+public function prepareCurlFields($array)
+{
+$str = '';
+
+foreach ($array as $key => $value) {
+$str .= $key . '=' . $value . '&';
+}
+
+return trim($str, '&');
+}
+
+}

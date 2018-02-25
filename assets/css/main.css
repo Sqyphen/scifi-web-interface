@@ -1,0 +1,292 @@
+@font-face {
+	font-family: "IBMCode";
+	src: url("./fonts/ibm.ttf");
+}
+@font-face {
+	font-family: "Amstrad";
+	src: url("./fonts/amstrad.ttf");
+}
+@font-face {
+    font-family: "Nordic";
+    src: url("./fonts/Nordic.ttf");
+}
+html,
+body {
+	background: #000;
+	margin: 0;
+	padding: 0;
+}
+h1, h2, h3, h4 {
+    color: white;
+    margin: 0;
+    padding: 0;
+}
+h1 {
+    font-family: "Nordic";
+    font-size: 60px;
+}
+h2 {
+    text-transform: uppercase;
+    font-size: 16px;
+}
+video {
+	position: absolute;
+	position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%; 
+    min-height: 100%;
+}
+.container {
+	position: relative;
+	width: 100%;
+	height: 100%;
+}
+
+/*
+ Login
+ */
+.login {
+    background: black;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    animation: fadeIn 0.25s;
+    animation-delay: 1s;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+}
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+.login .bg {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    margin: auto;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.login .bg .circle {
+    border: 1px solid white;
+    border-radius: 100%;
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.login .bg .inner_circle {
+    width: 120px;
+    height: 120px;
+    margin: auto -58px;
+}
+.login .bg .mid_circle {
+    width: 130px;
+    height: 130px;
+    margin: auto -63px;
+    border: 1px dashed white;
+    animation: rotateOnPoint 30s infinite;
+    animation-timing-function: linear;
+}
+.login .bg .outer_circle {
+    width: 140px;
+    height: 140px;
+    margin: auto -68px;
+}
+@keyframes rotateOnPoint {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(359deg);
+  }
+}
+
+.login .inner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    margin: 0 auto;
+    text-align: center;
+}
+.login .inner{
+    background: rgba(0,0,0,0.8);
+}
+.login_field {
+    border: 1px solid rgba(255,255,255,0.7);
+    background: rgba(0,0,0,0.9);
+    color: white;
+    outline: 0;
+    font-size: 15px;
+    text-align: center;
+    padding: 5px;
+    width: 250px;
+}
+
+
+/*
+ Desktop
+ */
+.desktop {
+}
+.inner_border {
+	position: absolute;
+	border: 15px solid black;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+}
+.top_left_box {
+	position: absolute;
+	height: 100px;
+	width: 400px;
+	top: 0;
+	left: 0;
+	border-radius: 0;
+}
+.top_left_box .main {
+	background: black;
+	height: 80px;
+}
+.top_left_box .main::after {
+	content: '';
+    position: absolute;
+    top: 0;
+    right: -80px;
+    border-bottom: 80px solid transparent;
+    border-left: 80px solid black;
+    width: 0;
+}
+.top_left_box .main::before {
+	content: '';
+    position: absolute;
+    left: 0;
+    bottom: -20px;
+    border-bottom: 40px solid transparent;
+    border-left: 40px solid black;
+    width: 0;
+}
+.top_left_box .main h1 {
+    font-size: 30px;
+    padding: 15px 0 0 20px;
+    display: inline-block;
+}
+.top_left_box .main h2 {
+    vertical-align: top;
+    font-family: "Amstrad";
+    padding: 20px 30px 0 3px;
+    font-size: 8px;
+    display: inline-block;
+}
+.grid_overlay {
+	background: url("../img/grid_test.png") repeat;
+	display: block;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.codeText {
+	font-family: "IBMCode";
+    opacity: 0.7;
+    display: block;
+    overflow-y: hidden;
+    position: absolute;
+    text-align: right;
+    top: 25px;
+    bottom: 25px;
+    right: 25px;
+    width: 30%;
+    font-size: 9px;
+    letter-spacing: -2px;
+}
+.typeContainer {
+    position: absolute;
+    top: 100px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0 auto;
+    width: 600px;
+    overflow: hidden;
+}
+.typeContainer .area {
+    background: rgba(0,0,0,0.8);
+    width: 60%;
+    height: 70%;
+}
+.typeContainer .area .header {
+    background: black;
+    border-bottom: 1px solid white;
+    padding: 4px;
+    position: relative;
+}
+.typeContainer .area .header .title,
+.typeContainer .area .header .extra {
+    color: white;
+    font-size: 9px;
+}
+.typeContainer .area .header .title {
+
+}
+.typeContainer .area .header .extra {
+    position: absolute;
+    right: 5px;
+    top: 4px;
+}
+.typeContainer .area .code {
+    color: rgba(255,255,255,0.9);
+    font-size: 8px;
+    height: 95%;
+    overflow: hidden;
+}
+.typeContainer .keyboard {
+    background: rgba(0,0,0,0.8);
+    margin-top: 10px;
+    width: 100%;
+    height: 30%;
+}
+.typeContainer .keyboard .key {
+    background: rgba(0,0,0,0.8);
+    font-family: "Amstrad";
+    font-size: 9px;
+    text-transform: uppercase;
+    display: inline-block;
+    color: white;
+    width: 25px;
+    height: 25px;
+}
+.key.pressed {
+    animation: flash linear 0.1s;
+}
+@keyframes flash {
+    0% { opacity: 1; } 
+    50% { opacity: .1; } 
+    100% { opacity: 1; }
+}
+.key.repressed {
+    animation: reflash linear 0.1s;
+}
+@keyframes reflash {
+    0% { opacity: 1; } 
+    50% { opacity: .1; } 
+    100% { opacity: 1; }
+}
+.hidden {
+    visibility: hidden;
+}
